@@ -59,41 +59,47 @@ public class Program
                             await Task.Delay(1000); //avoid Discord rate limits
                         }
 
-                        //get user's progress in this game to see if they just beat or mastered it
-                        //cache results so we don't make duplicate API calls for multiple achievements in the same game
-                        if (!progressByGame.TryGetValue(achievement.GameId, out var progress))
+                        //check the database to see if the user has already beaten or mastered this game
+                        var userGameStatus = await databaseClient.GetUserGameStatus(user.Ulid, achievement.GameId);
+                        if (!userGameStatus.Beaten || !userGameStatus.Mastered)
                         {
-                            Log.Information("  RA: Getting game info/user progress for {user} in {gameTitle}...", user.Name, achievement.GameTitle);
-                            progress = await raClient.GetGameInfoAndUserProgressAsync(user.Ulid, achievement.GameId);
+                            //get user's progress in this game to see if they just beat or mastered it
+                            //cache results so we don't make duplicate API calls for multiple achievements in the same game
+                            if (!progressByGame.TryGetValue(achievement.GameId, out var progress))
+                            {
+                                Log.Information("  RA: Getting game info/user progress for {user} in {gameTitle}...", user.Name, achievement.GameTitle);
+                                progress = await raClient.GetGameInfoAndUserProgressAsync(user.Ulid, achievement.GameId);
+                                if (progress != null) progressByGame[achievement.GameId] = progress;
+                            }
                             if (progress != null)
                             {
-                                progressByGame[achievement.GameId] = progress;
-                            }
-                        }
-                        if (progress != null)
-                        {
-                            //determine if the user just beat or mastered the game
-                            var progressionAchievements = progress.Achievements.Values
-                                .Where(a => a.Type == "progression" || a.Type == "win_condition");
-                            bool beaten = progressionAchievements.All(a => a.DateEarned != null);
-                            bool mastered = progress.NumAchievements == progress.NumAwardedToUser;
+                                //determine if the user just beat or mastered the game
+                                var progressionAchievements = progress.Achievements.Values
+                                    .Where(a => a.Type == "progression" || a.Type == "win_condition");
+                                bool beaten = progressionAchievements.All(a => a.DateEarned != null);
+                                bool mastered = progress.NumAchievements == progress.NumAwardedToUser;
 
-                            if (mastered)
-                            {
-                                foreach (var channelId in config.Discord.ChannelIds)
+                                if (mastered && !userGameStatus.Mastered)
                                 {
-                                    Log.Information("  Discord: Posting to channel {channelId}: {user} mastered {title}!", channelId, user.Name, achievement.GameTitle);
-                                    await discordClient.PostGameMasteredToChannelAsync(achievement, progress, user, channelId);
-                                    await Task.Delay(1000); //avoid Discord rate limits
+                                    userGameStatus.Mastered = true;
+                                    foreach (var channelId in config.Discord.ChannelIds)
+                                    {
+                                        Log.Information("  Discord: Posting to channel {channelId}: {user} mastered {title}!", channelId, user.Name, achievement.GameTitle);
+                                        await discordClient.PostGameMasteredToChannelAsync(achievement, progress, user, channelId);
+                                        await Task.Delay(1000); //avoid Discord rate limits
+                                    }
+                                    await databaseClient.SaveUserGameStatus(userGameStatus);
                                 }
-                            }
-                            else if (beaten)
-                            {
-                                foreach (var channelId in config.Discord.ChannelIds)
+                                else if (beaten && !userGameStatus.Beaten)
                                 {
-                                    Log.Information("  Discord: Posting to channel {channelId}: {user} beat {title}!", channelId, user.Name, achievement.GameTitle);
-                                    await discordClient.PostGameBeatenToChannelAsync(achievement, progress, user, channelId);
-                                    await Task.Delay(1000); //avoid Discord rate limits
+                                    userGameStatus.Beaten = true;
+                                    foreach (var channelId in config.Discord.ChannelIds)
+                                    {
+                                        Log.Information("  Discord: Posting to channel {channelId}: {user} beat {title}!", channelId, user.Name, achievement.GameTitle);
+                                        await discordClient.PostGameBeatenToChannelAsync(achievement, progress, user, channelId);
+                                        await Task.Delay(1000); //avoid Discord rate limits
+                                    }
+                                    await databaseClient.SaveUserGameStatus(userGameStatus);
                                 }
                             }
                         }
