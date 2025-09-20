@@ -89,7 +89,7 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
                         {
                             name = achievement.GameTitle,
                             url = $"https://retroachievements.org/game/{achievement.GameId}",
-                            //TODO: icon_url = beaten icon
+                            icon_url = "https://raw.githubusercontent.com/taylus/RetroAchievementsDiscordBot/refs/heads/master/RetroAchievementsDiscordBot/img/beaten.gif"
                         },
                         title = $"{user.Name} beat {achievement.GameTitle}!",
                         url = $"https://retroachievements.org/game/{achievement.GameId}",
@@ -140,7 +140,7 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
                         {
                             name = achievement.GameTitle,
                             url = $"https://retroachievements.org/game/{achievement.GameId}",
-                            //TODO: icon_url = mastered icon
+                            icon_url = "https://raw.githubusercontent.com/taylus/RetroAchievementsDiscordBot/refs/heads/master/RetroAchievementsDiscordBot/img/mastered.gif"
                         },
                         title = $"{user.Name} mastered {achievement.GameTitle}!",
                         url = $"https://retroachievements.org/game/{achievement.GameId}",
