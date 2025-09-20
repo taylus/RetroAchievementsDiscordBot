@@ -15,7 +15,8 @@ public class MockRetroAchievementsClient() : IRetroAchievementsClient
                 GameTitle = "Test Game",
                 GameId = 1,
                 ConsoleName = "Test Console",
-                BadgeUrl = "https://static.retroachievements.org/assets/images/ra-icon.webp"
+                BadgeUrl = "/assets/images/ra-icon.webp",
+                Date = DateTime.UtcNow.AddMinutes(-1)
             }
         };
 

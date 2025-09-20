@@ -10,4 +10,5 @@ public class Achievement
     public required int GameId { get; set; }
     public required string ConsoleName { get; set; }
     public required string BadgeUrl { get; set; }
+    public required DateTime Date { get; set; }
 }
