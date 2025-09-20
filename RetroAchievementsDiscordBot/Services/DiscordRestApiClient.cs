@@ -10,14 +10,14 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
     private readonly HttpClient httpClient = httpClient;
     private readonly string botToken = botToken;
 
-    public async Task PostAchievementUnlockToChannel(Achievement achievement, User unlockedBy, string channelId)
+    public async Task PostAchievementUnlockToChannelAsync(Achievement achievement, User unlockedBy, string channelId)
     {
         var requestBody = CreateRequestBody(achievement, unlockedBy);
         var request = CreateRequest(HttpMethod.Post, $"channels/{channelId}/messages", botToken, requestBody);
         var response = await httpClient.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
-            Log.Information("  Discord: Posted to channel {channelId}: {user} unlocked {title}!", channelId, unlockedBy.Name, achievement.Title);
+            Log.Information("  Discord: Posted to channel {channelId} successfully", channelId);
         }
         else
         {
@@ -35,7 +35,7 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
 
         static StringContent CreateRequestBody(Achievement achievement, User unlockedBy)
         {
-            var payload = new
+            return new StringContent(JsonSerializer.Serialize(new
             {
                 embeds = new[]
                 {
@@ -62,12 +62,10 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
                             text = $"Unlocked by {unlockedBy.Name}",
                             icon_url = "https://retroachievements.org" + unlockedBy.Avatar
                         },
-                        timestamp = achievement.Date.ToString("o")
+                        timestamp = achievement.DateTimeOffset.ToString("o")
                     }
                 }
-            };
-            string json = JsonSerializer.Serialize(payload);
-            return new StringContent(json, Encoding.UTF8, "application/json");
+            }), Encoding.UTF8, "application/json");
         }
     }
 }

@@ -19,8 +19,8 @@ public class Program
             Log.Debug("Using RetroAchievements API: {apiUrl}", config.RetroAchievements.ApiBaseUrl);
             Log.Debug("Using Discord API: {apiUrl}", config.Discord.ApiBaseUrl);
 
-            //var raClient = new RetroAchievementsRestApiClient(new HttpClient() { BaseAddress = new Uri(config.RetroAchievements.ApiBaseUrl) }, config.RetroAchievements.ApiKey);
-            var raClient = new MockRetroAchievementsClient();
+            var raClient = new RetroAchievementsRestApiClient(new HttpClient() { BaseAddress = new Uri(config.RetroAchievements.ApiBaseUrl) }, config.RetroAchievements.ApiKey);
+            //var raClient = new MockRetroAchievementsClient();
 
             var discordClient = new DiscordRestApiClient(new HttpClient() { BaseAddress = new Uri(config.Discord.ApiBaseUrl) }, config.Discord.BotToken);
 
@@ -28,29 +28,49 @@ public class Program
             while (true)
             {
                 Log.Debug("Beginning polling cycle:");
-
-                //TODO: fetch users from database and loop over each
-                var user = new User() { Ulid = "", Name = "Taylus", Avatar = "/UserPic/Taylus.png", LastUpdated = 1758120391 };
-
-                //get any achievements user has unlocked since we last checked
-                const long to = 1758270494;     //TODO: use now + store as last checked time later for next run
-                Log.Debug("  RA: Getting achievements for {user} between [{from}] and [{to}]...", user.Name,
-                    DateTimeOffset.FromUnixTimeSeconds(user.LastUpdated).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"),
-                    DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
-                var achievements = await raClient.GetRecentAchievementsForUserAsync(user.Name, user.LastUpdated, to);
-                Log.Information("  RA: Got {count} achievement(s): {list}", achievements.Count, achievements.Select(a => a.AchievementId));
-
-                //post any new achievements to Discord
-                foreach (var achievement in achievements)
+                var users = await databaseClient.GetUsersAsync();
+                Log.Debug("  DB: Got {count} user(s) from database", users.Count());
+                foreach (var user in users)
                 {
-                    foreach (var channelId in config.Discord.ChannelIds)
+                    //get any achievements this user has unlocked since we last checked
+                    var to = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    Log.Debug("  RA: Getting achievements for {user} between [{from}] and [{to}]...", user.Name,
+                        DateTimeOffset.FromUnixTimeSeconds(user.LastUpdated).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"),
+                        DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
+                    var achievements = await raClient.GetRecentAchievementsForUserAsync(user.Ulid, user.LastUpdated, to);
+
+                    //post any new achievements to Discord
+                    foreach (var achievement in achievements)
                     {
-                        Log.Information("  Discord: Posting achievement {id} to channel {channelId}... ", achievement.AchievementId, channelId);
-                        await discordClient.PostAchievementUnlockToChannel(achievement, user, channelId);
+                        Log.Information("  RA: {user} unlocked {title} for {gameTitle} on {consoleName}", user.Name, achievement.Title, achievement.GameTitle, achievement.ConsoleName);
+                        
+                        //check the database to see if we've already posted this
+                        if (await databaseClient.AchievementUnlockExistsAsync(user.Ulid, achievement.AchievementId))
+                        {
+                            Log.Debug("  DB: Achievement {achievementId} for {user} already exists in database, skipping...", achievement.AchievementId, user.Name);
+                            continue;
+                        }
+
+                        foreach (var channelId in config.Discord.ChannelIds)
+                        {
+                            Log.Information("  Discord: Posting to channel {channelId}: {user} unlocked {title}!", channelId, user.Name, achievement.Title);
+                            await discordClient.PostAchievementUnlockToChannelAsync(achievement, user, channelId);
+                            await Task.Delay(1000); //avoid Discord rate limits
+                        }
+
+                        //save this unlock to the database so we don't post it again
+                        Log.Debug("  DB: Saving achievement {achievementId} for {user} to database...", achievement.AchievementId, user.Name);
+                        await databaseClient.SaveAchievementUnlockAsync(user.Ulid, achievement);
                     }
+
+                    //update the user's last updated time so next run we only get new achievements
+                    Log.Debug("  DB: Setting LastUpdated for {user} to {to}...", user.Name, DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
+                    await databaseClient.UpdateUserLastUpdatedAsync(user.Ulid, to);
+
+                    await Task.Delay(1000); //avoid RA rate limits
                 }
 
-                Log.Debug("Waiting {interval} minutes...", config.PollingIntervalInMinutes);
+                Log.Debug("Waiting {interval} minutes for next polling cycle...", config.PollingIntervalInMinutes);
                 await Task.Delay(TimeSpan.FromMinutes(config.PollingIntervalInMinutes));
             }
         }

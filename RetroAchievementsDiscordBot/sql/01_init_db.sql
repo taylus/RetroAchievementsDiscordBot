@@ -6,11 +6,6 @@ create table if not exists Users
     LastUpdated int not null
 );
 
-insert into Users(ULID, Name, Avatar, LastUpdated) values
-('01FWNYX95JRRRJTVDSQ4C9ZZ3K', 'Taylus', '/UserPic/Taylus.png', 1758120391);
-
-select * from Users;
-
 create table if not exists UserAchievements
 (
     ULID text not null,
@@ -27,13 +22,7 @@ create table if not exists UserAchievements
     foreign key (ULID) references Users(ULID)
 );
 
-insert into UserAchievements(ULID, AchievementID, UnlockedAt, Title, Description, Points, GameTitle, GameID, ConsoleName, BadgeURL) values
-('01FWNYX95JRRRJTVDSQ4C9ZZ3K', 186164, 1758120391, '[DW1] Here Comes the Sun', 'Obtain the Sun Stone', 5, 'Dragon Quest I & II', 3818, 'Game Boy Color', '/Badge/221391.png');
-
-select u.Name, a.*
-from Users u
-inner join UserAchievements a
-    on a.ULID = u.ULID;
-
+/* rollback
 drop table UserAchievements;
 drop table Users;
+*/

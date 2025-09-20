@@ -16,7 +16,7 @@ public class MockRetroAchievementsClient() : IRetroAchievementsClient
                 GameId = 1,
                 ConsoleName = "Test Console",
                 BadgeUrl = "/assets/images/ra-icon.webp",
-                Date = DateTime.UtcNow.AddMinutes(-1)
+                Date = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss")
             }
         };
 

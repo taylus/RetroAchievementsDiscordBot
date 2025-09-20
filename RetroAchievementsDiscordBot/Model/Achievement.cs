@@ -1,4 +1,6 @@
-﻿namespace RetroAchievementsDiscordBot;
+﻿using System.Globalization;
+
+namespace RetroAchievementsDiscordBot;
 
 public class Achievement
 {
@@ -10,5 +12,6 @@ public class Achievement
     public required int GameId { get; set; }
     public required string ConsoleName { get; set; }
     public required string BadgeUrl { get; set; }
-    public required DateTime Date { get; set; }
+    public required string Date { get; set; }
+    public DateTimeOffset DateTimeOffset => DateTimeOffset.Parse(Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
 }
