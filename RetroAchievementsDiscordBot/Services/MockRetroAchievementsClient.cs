@@ -1,6 +1,4 @@
-﻿using RetroAchievementsDiscordBot.Model;
-
-namespace RetroAchievementsDiscordBot.Services;
+﻿namespace RetroAchievementsDiscordBot;
 
 public class MockRetroAchievementsClient() : IRetroAchievementsClient
 {

@@ -1,4 +1,4 @@
-﻿namespace RetroAchievementsDiscordBot.Configuration;
+﻿namespace RetroAchievementsDiscordBot;
 
 public class RetroAchievementsOptions
 {

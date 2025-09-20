@@ -1,7 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using RetroAchievementsDiscordBot.Configuration;
-using RetroAchievementsDiscordBot.Database;
-using RetroAchievementsDiscordBot.Services;
 using Serilog;
 using Serilog.Core;
 
@@ -14,7 +11,7 @@ public class Program
         Log.Logger = ConfigureLogging();
         try
         {
-            Log.Information("Starting RetroAchievements Discord bot...");
+            Log.Information("{banner} RetroAchievements Discord Bot {banner}", new string('=', 30), new string('=', 30));
             var config = LoadConfiguration();
 
             var databaseClient = new DatabaseClient(config.Database.ConnectionString);
@@ -28,21 +25,22 @@ public class Program
             Log.Information("Polling RetroAchievements API every {interval} minutes, Ctrl+C to quit...", config.PollingIntervalInMinutes);
             while (true)
             {
+                Log.Debug("Beginning polling cycle...");
                 //TODO: fetch users from database and loop over each
 
                 //get any achievements user has unlocked since we last checked
                 const string username = "Taylus";
                 const long from = 1758120391;   //TODO: get from database
                 const long to = 1758270494;     //TODO: use now + store as last checked time later for next run
-                Log.Debug("Getting achievements for {user} between {from} and {to}...", username,
+                Log.Debug("  Getting achievements for {user} between [{from}] and [{to}]...", username,
                     DateTimeOffset.FromUnixTimeSeconds(from).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"),
                     DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
                 var achievements = await raClient.GetRecentAchievementsForUserAsync(username, from, to);
-                Log.Information("Got achievement {id}: {title}", achievements[0].AchievementId, achievements[0].Title);
+                Log.Information("  Got achievement {id}: {title}", achievements[0].AchievementId, achievements[0].Title);
 
+                Log.Debug("Waiting {interval} minutes...", config.PollingIntervalInMinutes);
                 await Task.Delay(TimeSpan.FromMinutes(config.PollingIntervalInMinutes));
             }
-
         }
         catch (Exception ex)
         {

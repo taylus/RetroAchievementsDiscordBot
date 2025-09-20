@@ -1,7 +1,6 @@
 ﻿using System.Net.Http.Json;
-using RetroAchievementsDiscordBot.Model;
 
-namespace RetroAchievementsDiscordBot.Services;
+namespace RetroAchievementsDiscordBot;
 
 public class RetroAchievementsRestApiClient(HttpClient httpClient, string apiKey) : IRetroAchievementsClient
 {

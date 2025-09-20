@@ -1,4 +1,4 @@
-﻿namespace RetroAchievementsDiscordBot.Model;
+﻿namespace RetroAchievementsDiscordBot;
 
 public class Achievement
 {

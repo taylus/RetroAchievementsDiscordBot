@@ -1,4 +1,4 @@
-﻿namespace RetroAchievementsDiscordBot.Services;
+﻿namespace RetroAchievementsDiscordBot;
 
 public class DiscordRestApiClient(HttpClient httpClient, string botToken, string[] channelIds)
 {

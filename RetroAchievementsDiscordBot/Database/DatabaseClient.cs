@@ -1,4 +1,4 @@
-﻿namespace RetroAchievementsDiscordBot.Database;
+﻿namespace RetroAchievementsDiscordBot;
 
 public class DatabaseClient(string connectionString)
 {
