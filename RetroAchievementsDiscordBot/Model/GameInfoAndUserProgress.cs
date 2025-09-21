@@ -2,21 +2,21 @@
 
 public class GameInfoAndUserProgress
 {
-    public required int NumDistinctPlayers { get; set; }
-    public required int NumAchievements { get; set; }
-    public required int NumAwardedToUser { get; set; }
+    public int NumDistinctPlayers { get; set; }
+    public int NumAchievements { get; set; }
+    public int NumAwardedToUser { get; set; }
     public double UserCompletion => (double)NumAwardedToUser / NumAchievements;
-    public required string ImageIcon { get; set; }
-    public required Dictionary<int, ProgressAchievement> Achievements { get; set; }
+    public string ImageIcon { get; set; } = "";
+    public Dictionary<int, ProgressAchievement> Achievements { get; set; } = new Dictionary<int, ProgressAchievement>();
     public int Points => Achievements.Values.Sum(a => a.Points);
     public int PointsAwardedToUser => Achievements.Values.Where(a => a.DateEarned != null).Sum(a => a.Points);
 }
 
 public class ProgressAchievement
 {
-    public required int Id { get; set; }
-    public required int Points { get; set; }
-    public required string Type { get; set; }
-    public required int NumAwarded { get; set; }
+    public int Id { get; set; }
+    public int Points { get; set; }
+    public string Type { get; set; } = "";
+    public int NumAwarded { get; set; }
     public string? DateEarned { get; set; }
 }

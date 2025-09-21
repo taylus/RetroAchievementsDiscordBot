@@ -13,108 +13,13 @@ public class Program
         {
             Log.Information("{banner} RetroAchievements Discord Bot {banner}", new string('=', 30), new string('=', 30));
             var config = LoadConfiguration();
-
-            var databaseClient = new DatabaseClient(config.Database.ConnectionString);
-            Log.Debug("Using database: {connectionString}", config.Database.ConnectionString);
-            Log.Debug("Using RetroAchievements API: {apiUrl}", config.RetroAchievements.ApiBaseUrl);
-            Log.Debug("Using Discord API: {apiUrl}", config.Discord.ApiBaseUrl);
-
-            var raClient = new RetroAchievementsRestApiClient(new HttpClient() { BaseAddress = new Uri(config.RetroAchievements.ApiBaseUrl) }, config.RetroAchievements.ApiKey);
-            //var raClient = new MockRetroAchievementsClient();
-
-            var discordClient = new DiscordRestApiClient(new HttpClient() { BaseAddress = new Uri(config.Discord.ApiBaseUrl) }, config.Discord.BotToken);
+            var bot = ConfigureBot(config);
 
             Log.Information("Polling RetroAchievements API every {interval} minutes, Ctrl+C to quit", config.PollingIntervalInMinutes);
             while (true)
             {
                 Log.Debug("Beginning polling cycle:");
-                var users = await databaseClient.GetUsersAsync();
-                Log.Debug("  DB: Got {count} user(s) from database", users.Count());
-                foreach (var user in users)
-                {
-                    //get any achievements this user has unlocked since we last checked
-                    var to = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    Log.Debug("  RA: Getting achievements for {user} between [{from}] and [{to}]...", user.Name,
-                        DateTimeOffset.FromUnixTimeSeconds(user.LastUpdated).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"),
-                        DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
-                    var achievements = await raClient.GetRecentAchievementsForUserAsync(user.Ulid, user.LastUpdated, to);
-
-                    //post any new achievements to Discord
-                    var progressByGame = new Dictionary<int, GameInfoAndUserProgress>();
-                    foreach (var achievement in achievements)
-                    {
-                        Log.Information("  RA: {user} unlocked {title} for {gameTitle} on {consoleName}", user.Name, achievement.Title, achievement.GameTitle, achievement.ConsoleName);
-
-                        //check the database to see if we've already posted this
-                        if (await databaseClient.AchievementUnlockExistsAsync(user.Ulid, achievement.AchievementId))
-                        {
-                            Log.Debug("  DB: Achievement {achievementId} for {user} already exists in database, skipping...", achievement.AchievementId, user.Name);
-                            continue;
-                        }
-
-                        foreach (var channelId in config.Discord.ChannelIds)
-                        {
-                            Log.Information("  Discord: Posting to channel {channelId}: {user} unlocked {title}!", channelId, user.Name, achievement.Title);
-                            await discordClient.PostAchievementUnlockToChannelAsync(achievement, user, channelId);
-                            await Task.Delay(1000); //avoid Discord rate limits
-                        }
-
-                        //check the database to see if the user has already beaten or mastered this game
-                        var userGameStatus = await databaseClient.GetUserGameStatus(user.Ulid, achievement.GameId);
-                        if (!userGameStatus.Beaten || !userGameStatus.Mastered)
-                        {
-                            //get user's progress in this game to see if they just beat or mastered it
-                            //cache results so we don't make duplicate API calls for multiple achievements in the same game
-                            if (!progressByGame.TryGetValue(achievement.GameId, out var progress))
-                            {
-                                Log.Information("  RA: Getting game info/user progress for {user} in {gameTitle}...", user.Name, achievement.GameTitle);
-                                progress = await raClient.GetGameInfoAndUserProgressAsync(user.Ulid, achievement.GameId);
-                                if (progress != null) progressByGame[achievement.GameId] = progress;
-                            }
-                            if (progress != null)
-                            {
-                                //determine if the user just beat or mastered the game
-                                var progressionAchievements = progress.Achievements.Values
-                                    .Where(a => a.Type == "progression" || a.Type == "win_condition");
-                                bool beaten = progressionAchievements.All(a => a.DateEarned != null);
-                                bool mastered = progress.NumAchievements == progress.NumAwardedToUser;
-
-                                if (mastered && !userGameStatus.Mastered)
-                                {
-                                    userGameStatus.Mastered = true;
-                                    foreach (var channelId in config.Discord.ChannelIds)
-                                    {
-                                        Log.Information("  Discord: Posting to channel {channelId}: {user} mastered {title}!", channelId, user.Name, achievement.GameTitle);
-                                        await discordClient.PostGameMasteredToChannelAsync(achievement, progress, user, channelId);
-                                        await Task.Delay(1000); //avoid Discord rate limits
-                                    }
-                                    await databaseClient.SaveUserGameStatus(userGameStatus);
-                                }
-                                else if (beaten && !userGameStatus.Beaten)
-                                {
-                                    userGameStatus.Beaten = true;
-                                    foreach (var channelId in config.Discord.ChannelIds)
-                                    {
-                                        Log.Information("  Discord: Posting to channel {channelId}: {user} beat {title}!", channelId, user.Name, achievement.GameTitle);
-                                        await discordClient.PostGameBeatenToChannelAsync(achievement, progress, user, channelId);
-                                        await Task.Delay(1000); //avoid Discord rate limits
-                                    }
-                                    await databaseClient.SaveUserGameStatus(userGameStatus);
-                                }
-                            }
-                        }
-
-                        //save this unlock to the database so we don't post it again
-                        Log.Debug("  DB: Saving achievement {achievementId} for {user} to database...", achievement.AchievementId, user.Name);
-                        await databaseClient.SaveAchievementUnlockAsync(user.Ulid, achievement);
-                    }
-
-                    //update the user's last updated time so next run we only get new achievements
-                    Log.Debug("  DB: Setting LastUpdated for {user} to {to}...", user.Name, DateTimeOffset.FromUnixTimeSeconds(to).ToLocalTime().ToString("yyyy-MM-dd h:mm tt"));
-                    await databaseClient.UpdateUserLastUpdatedAsync(user.Ulid, to);
-
-                    await Task.Delay(1000); //avoid RA rate limits
-                }
+                await bot.PollForAchievementsAndPostToDiscord();
 
                 Log.Debug("Waiting {interval} minutes for next polling cycle...", config.PollingIntervalInMinutes);
                 await Task.Delay(TimeSpan.FromMinutes(config.PollingIntervalInMinutes));
@@ -145,5 +50,20 @@ public class Program
             .AddEnvironmentVariables()
             .Build();
         return config.Get<BotOptions>() ?? throw new Exception("Failed to load configuration.");
+    }
+
+    private static Bot ConfigureBot(BotOptions config)
+    {
+        Log.Debug("Using database: {connectionString}", config.Database.ConnectionString);
+        var databaseClient = new DatabaseClient(config.Database.ConnectionString);
+
+        Log.Debug("Using RetroAchievements API: {apiUrl}", config.RetroAchievements.ApiBaseUrl);
+        var raClient = new RetroAchievementsRestApiClient(new HttpClient() { BaseAddress = new Uri(config.RetroAchievements.ApiBaseUrl) }, config.RetroAchievements.ApiKey);
+        //var raClient = new MockRetroAchievementsClient();
+
+        Log.Debug("Using Discord API: {apiUrl}", config.Discord.ApiBaseUrl);
+        var discordClient = new DiscordRestApiClient(new HttpClient() { BaseAddress = new Uri(config.Discord.ApiBaseUrl) }, config.Discord.BotToken);
+
+        return new Bot(config, databaseClient, raClient, discordClient);
     }
 }

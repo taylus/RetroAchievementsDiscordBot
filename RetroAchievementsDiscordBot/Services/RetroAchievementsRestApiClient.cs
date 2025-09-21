@@ -33,7 +33,7 @@ public class RetroAchievementsRestApiClient(HttpClient httpClient, string apiKey
         }
         var progress = await response.Content.ReadFromJsonAsync<GameInfoAndUserProgress>();
         if (progress == null) return null;
-        Log.Information("  RA: Got game info/user progress: {completion:F2}%", progress.UserCompletion);
+        Log.Information("  RA: Got game info/user progress: {completion:P2}", progress.UserCompletion);
         return progress;
     }
 }

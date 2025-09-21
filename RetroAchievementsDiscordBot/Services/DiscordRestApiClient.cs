@@ -5,12 +5,12 @@ using Serilog;
 
 namespace RetroAchievementsDiscordBot;
 
-public class DiscordRestApiClient(HttpClient httpClient, string botToken)
+public class DiscordRestApiClient(HttpClient httpClient, string botToken) : IDiscordRestApiClient
 {
     private readonly HttpClient httpClient = httpClient;
     private readonly string botToken = botToken;
 
-    public async Task PostAchievementUnlockToChannelAsync(Achievement achievement, User unlockedBy, string channelId)
+    public async Task PostAchievementUnlockAsync(Achievement achievement, User unlockedBy, string channelId)
     {
         var requestBody = CreateRequestBody(achievement, unlockedBy);
         var request = CreateRequest(HttpMethod.Post, $"channels/{channelId}/messages", botToken, requestBody);
@@ -61,7 +61,7 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
         }
     }
 
-    public async Task PostGameBeatenToChannelAsync(Achievement achievement, GameInfoAndUserProgress progress, User user, string channelId)
+    public async Task PostGameBeatenAsync(Achievement achievement, GameInfoAndUserProgress progress, User user, string channelId)
     {
         var requestBody = CreateRequestBody(achievement, progress, user);
         var request = CreateRequest(HttpMethod.Post, $"channels/{channelId}/messages", botToken, requestBody);
@@ -112,7 +112,7 @@ public class DiscordRestApiClient(HttpClient httpClient, string botToken)
         }
     }
 
-    public async Task PostGameMasteredToChannelAsync(Achievement achievement, GameInfoAndUserProgress progress, User user, string channelId)
+    public async Task PostGameMasteredAsync(Achievement achievement, GameInfoAndUserProgress progress, User user, string channelId)
     {
         var requestBody = CreateRequestBody(achievement, progress, user);
         var request = CreateRequest(HttpMethod.Post, $"channels/{channelId}/messages", botToken, requestBody);
