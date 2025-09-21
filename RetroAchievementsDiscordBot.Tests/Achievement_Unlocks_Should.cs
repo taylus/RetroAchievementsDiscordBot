@@ -90,6 +90,11 @@ public class Achievement_Unlocks_Should
         //arrange multiple unlocks for the same game that beat it
         var dbMock = new Mock<IDatabaseClient>();
         dbMock.Setup(d => d.GetUsersAsync()).ReturnsAsync([new User() { Name = "TestUser" }]);
+        dbMock.SetupSequence(d => d.GetUserGameStatusAsync(It.IsAny<string>(), It.IsAny<int>()))
+            .ReturnsAsync((UserGameStatus?)null) //first call (cycle #1 achievement #1), no status yet
+            .ReturnsAsync(new UserGameStatus() { Beaten = true }) //second call (cycle #1 achievement #2), now beaten
+            .ReturnsAsync(new UserGameStatus() { Beaten = true }) //subsequent calls, still beaten
+            .ReturnsAsync(new UserGameStatus() { Beaten = true }); //subsequent calls, still beaten
         var raMock = new Mock<IRetroAchievementsClient>();
         raMock.Setup(r => r.GetRecentAchievementsForUserAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>())).ReturnsAsync([
             new Achievement() { Title = "Test Achievement #1", GameId = 100, GameTitle = "Test Game", Date = DateTime.UtcNow.ToString() },
@@ -110,6 +115,7 @@ public class Achievement_Unlocks_Should
 
         //act
         await bot.PollForAchievementsAndPostToDiscord();
+        await bot.PollForAchievementsAndPostToDiscord(); //run twice to be sure it only posts once
 
         //assert beaten message is posted once
         discordMock.Verify(d => d.PostGameBeatenAsync(
@@ -128,6 +134,11 @@ public class Achievement_Unlocks_Should
         //arrange multiple unlocks for the same game that mastered it
         var dbMock = new Mock<IDatabaseClient>();
         dbMock.Setup(d => d.GetUsersAsync()).ReturnsAsync([new User() { Name = "TestUser" }]);
+        dbMock.SetupSequence(d => d.GetUserGameStatusAsync(It.IsAny<string>(), It.IsAny<int>()))
+            .ReturnsAsync((UserGameStatus?)null) //first call (cycle #1 achievement #1), no status yet
+            .ReturnsAsync(new UserGameStatus() { Beaten = true, Mastered = true }) //second call (cycle #1 achievement #2), now mastered
+            .ReturnsAsync(new UserGameStatus() { Beaten = true, Mastered = true }) //subsequent calls, still mastered
+            .ReturnsAsync(new UserGameStatus() { Beaten = true, Mastered = true }); //subsequent calls, still mastered
         var raMock = new Mock<IRetroAchievementsClient>();
         raMock.Setup(r => r.GetRecentAchievementsForUserAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>())).ReturnsAsync([
             new Achievement() { Title = "Test Achievement #1", GameId = 100, GameTitle = "Test Game", Date = DateTime.UtcNow.ToString() },
@@ -148,6 +159,7 @@ public class Achievement_Unlocks_Should
 
         //act
         await bot.PollForAchievementsAndPostToDiscord();
+        await bot.PollForAchievementsAndPostToDiscord(); //run twice to be sure it only posts once
 
         //assert mastered message is posted once
         discordMock.Verify(d => d.PostGameMasteredAsync(

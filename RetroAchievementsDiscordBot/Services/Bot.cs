@@ -79,6 +79,15 @@ public class Bot(BotOptions options, IDatabaseClient dbClient, IRetroAchievement
         }
 
         progressByGame[achievement.GameId] = progress;
+        userGameStatus ??= new UserGameStatus
+        {
+            ULID = user.Ulid,
+            GameID = achievement.GameId,
+            NumAchievements = progress.NumAchievements,
+            NumAwardedToUser = progress.NumAwardedToUser,
+            Beaten = false,
+            Mastered = false
+        };
 
         //determine if the user just beat or mastered the game
         var progressionAchievements = progress.Achievements.Values
@@ -86,18 +95,9 @@ public class Bot(BotOptions options, IDatabaseClient dbClient, IRetroAchievement
         bool beaten = progressionAchievements.All(a => a.DateEarned != null);
         bool mastered = progress.NumAchievements == progress.NumAwardedToUser;
 
-        userGameStatus ??= new UserGameStatus
+        if (beaten && !userGameStatus.Beaten)
         {
-            ULID = user.Ulid,
-            GameID = achievement.GameId,
-            NumAchievements = progress.NumAchievements,
-            NumAwardedToUser = progress.NumAwardedToUser,
-            Beaten = beaten,
-            Mastered = mastered
-        };
-
-        if (beaten)
-        {
+            userGameStatus.Beaten = true;
             Log.Information("  {user} just beat {gameTitle}! ({numAwarded}/{numTotal} progression achievements)", user.Name, achievement.GameTitle, progressionAchievements.Count(a => a.DateEarned != null), progressionAchievements.Count());
             if (!mastered) //if we beat and mastered at the same time then just post the mastered message (less spammy)
             {
@@ -109,13 +109,14 @@ public class Bot(BotOptions options, IDatabaseClient dbClient, IRetroAchievement
                 }
             }
         }
-        else
+        else if (!beaten)
         {
             Log.Information("  {user} has NOT beaten {gameTitle} yet ({numAwarded}/{numTotal} progression achievements)", user.Name, achievement.GameTitle, progressionAchievements.Count(a => a.DateEarned != null), progressionAchievements.Count());
         }
 
-        if (mastered)
+        if (mastered && !userGameStatus.Mastered)
         {
+            userGameStatus.Mastered = true;
             Log.Information("  {user} just mastered {gameTitle}! ({numAwarded}/{numTotal} total achievements)", user.Name, achievement.GameTitle, progress.NumAwardedToUser, progress.NumAchievements);
             foreach (var channelId in options.Discord.ChannelIds)
             {
@@ -124,7 +125,7 @@ public class Bot(BotOptions options, IDatabaseClient dbClient, IRetroAchievement
                 await Task.Delay(options.RateLimitDelayInMilliseconds);
             }
         }
-        else
+        else if (!mastered)
         {
             Log.Information("  {user} has NOT mastered {gameTitle} yet ({numAwarded}/{numTotal} total achievements)", user.Name, achievement.GameTitle, progress.NumAwardedToUser, progress.NumAchievements);
         }
