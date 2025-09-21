@@ -22,36 +22,4 @@ public class MockRetroAchievementsClient() : IRetroAchievementsClient
 
         return await Task.FromResult(achievements);
     }
-
-    public async Task<GameInfoAndUserProgress?> GetGameInfoAndUserProgressAsync(string userId, int gameId)
-    {
-        var progress = new GameInfoAndUserProgress()
-        {
-            NumDistinctPlayers = 100,
-            NumAchievements = 2,
-            NumAwardedToUser = 1,
-            ImageIcon = "/assets/images/ra-icon.webp",
-            Achievements = new Dictionary<int, ProgressAchievement>
-            {
-                [12345] = new ProgressAchievement
-                {
-                    Id = 12345,
-                    Points = 10,
-                    Type = "win_condition",
-                    NumAwarded = 40,
-                    DateEarned = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:ss")
-                },
-                [23456] = new ProgressAchievement
-                {
-                    Id = 23456,
-                    Points = 10,
-                    Type = "",
-                    NumAwarded = 15,
-                    DateEarned = null
-                }
-            }
-        };
-
-        return await Task.FromResult(progress);
-    }
 }

@@ -51,23 +51,4 @@ public class DatabaseClient(string connectionString) : IDatabaseClient
                 achievement.BadgeUrl
             });
     }
-
-    public async Task<UserGameStatus?> GetUserGameStatusAsync(string userId, int gameId)
-    {
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
-        return await connection.QueryFirstOrDefaultAsync<UserGameStatus>(
-            "select ULID, GameID, NumAchievements, NumAwardedToUser, Beaten, Mastered from UserGameStatus where ULID = @userId and GameID = @gameId",
-            new { userId, gameId });
-    }
-
-    public async Task SaveUserGameStatusAsync(UserGameStatus userGameStatus)
-    {
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
-        await connection.ExecuteAsync("insert into UserGameStatus (ULID, GameID, NumAchievements, NumAwardedToUser, Beaten, Mastered) " +
-            "values (@ULID, @GameID, @NumAchievements, @NumAwardedToUser, @Beaten, @Mastered) " +
-            "on conflict(ULID, GameID) do update " +
-            "set NumAchievements = @NumAchievements, NumAwardedToUser = @NumAwardedToUser, Beaten = @Beaten, Mastered = @Mastered", userGameStatus);
-    }
 }

@@ -22,19 +22,7 @@ create table if not exists UserAchievements
     foreign key (ULID) references Users(ULID)
 );
 
-create table if not exists UserGameStatus
-(
-    ULID text not null,
-    GameID int not null,
-    NumAchievements int not null,
-    NumAwardedToUser int not null,
-    Beaten boolean not null default 0,
-    Mastered boolean not null default 0,
-    primary key (ULID, GameID)
-);
-
 /* rollback
-drop table UserGameStatus;
 drop table UserAchievements;
 drop table Users;
 */

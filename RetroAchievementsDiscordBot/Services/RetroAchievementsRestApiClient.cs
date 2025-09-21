@@ -21,19 +21,4 @@ public class RetroAchievementsRestApiClient(HttpClient httpClient, string apiKey
         Log.Information("  RA: Got {count} achievement(s)", achievements.Count);
         return achievements;
     }
-
-    public async Task<GameInfoAndUserProgress?> GetGameInfoAndUserProgressAsync(string userId, int gameId)
-    {
-        var response = await httpClient.GetAsync($"API_GetGameInfoAndUserProgress.php?y={apiKey}&u={userId}&g={gameId}");
-        if (!response.IsSuccessStatusCode)
-        {
-            var responseContent = await response.Content.ReadAsStringAsync();
-            Log.Error("  RA: Failed to get game info/user progress: {statusCode} - {responseContent}", response.StatusCode, responseContent);
-            return null;
-        }
-        var progress = await response.Content.ReadFromJsonAsync<GameInfoAndUserProgress>();
-        if (progress == null) return null;
-        Log.Information("  RA: Got game info/user progress: {completion:P2}", progress.UserCompletion);
-        return progress;
-    }
 }
